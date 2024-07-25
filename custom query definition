@@ -1,0 +1,17 @@
+@EndUserText.label: 'Custom entity for active position list'
+@ObjectModel.query.implementedBy:'ABAP:ZHR_QUERY_ACTIVE_POSTION' 
+define custom entity ZHR_CUS_ACTIVE_POSTION_I 
+{
+  key plvar  : abap.char( 2 );
+  key otype : otype;
+  key objid :  objektid;
+  parot : otype;
+  parid :objektid;
+  begda : dats;
+  endda : dats;
+  short : short_d;
+  stext : stext;
+  vbeg : dats;
+  vend : dats;
+  tlevel : slevel_d;
+}
