@@ -1,0 +1,70 @@
+     TRY.
+        CASE io_request->get_entity_id( ).
+
+          WHEN 'ZHR_CUS_ACTIVE_POSTION_I' .
+            DATA: orginfo_tab TYPE STANDARD TABLE OF  zhr_position_tbl .
+          CALL FUNCTION 'HRCM_ORGSTRC_INFO_TABLE_GET'
+       EXPORTING
+            plvar          = '01'
+            root_otype     = 'O'
+            root_objid     = 10000050
+            begda          = sy-datum
+            endda          = sy-datum
+*           PATH_ID        = ' '
+*           PATH_DEPTH     = 0
+       TABLES
+            org_info_table = orginfo_tab
+       EXCEPTIONS
+            path_error     = 1
+            root_error     = 2
+            OTHERS         = 3.
+  IF sy-subrc <> 0.
+
+  ENDIF.
+              DATA(lv_offset) = io_request->get_paging( )->get_offset( ).
+              DATA(lv_page_size) = io_request->get_paging( )->get_page_size( ).
+
+              DATA(lv_max_rows) = COND #( WHEN lv_page_size = if_rap_query_paging=>page_size_unlimited
+                                          THEN 0 ELSE lv_page_size ).
+*SELECT *
+*  FROM zhr_position_tbl
+*  ORDER BY PRIMARY KEY
+*  INTO TABLE @orginfo_tab
+*  OFFSET @lv_offset UP TO @lv_max_rows ROWS.
+data : lv_lines TYPE INT8,
+      lv_delete_from TYPE INT8,
+      lv_db_count type int8.
+  zrm_upload_data=>load_data( IMPORTING et_data = orginfo_tab ).
+  IF lv_offset > 0.
+    DELETE orginfo_tab FROM 1 TO lv_offset.
+    lv_delete_from = lv_max_rows + 1.
+    lv_lines = LINES( orginfo_tab ).
+    DELETE orginfo_tab FROM lv_delete_from TO lv_lines.
+  ELSE .
+     lv_max_rows = lv_max_rows + 1.
+     lv_db_count = LINES( orginfo_tab ).
+     DELETE orginfo_tab FROM lv_max_rows.
+
+  ENDIF.
+*
+*  SELECT * FROM /dmo/travel
+*               ORDER BY ('primary key')
+*               INTO CORRESPONDING FIELDS OF TABLE @lt_travel_response
+*               OFFSET @lv_offset UP TO @lv_max_rows ROWS.
+
+             io_response->set_data( orginfo_tab ).
+
+                        IF io_request->is_total_numb_of_rec_requested( ).
+**select count
+*              SELECT COUNT( * ) FROM /dmo/travel
+*                                WHERE (lv_sql_filter)
+*                                INTO @DATA(lv_travel_count).
+**fill response
+
+              io_response->set_total_number_of_records( lv_db_count ).
+            ENDIF.
+          WHEN OTHERS.
+
+        ENDCASE.
+        CATCH cx_rap_query_provider.
+     ENDTRY.
