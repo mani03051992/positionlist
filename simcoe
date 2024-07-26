@@ -87,6 +87,10 @@ CLASS zhr_query_position_list IMPLEMENTATION.
         IF ls_range-name = 'STATUS'.
         DELETE it_output_list WHERE status NOT IN ls_range-range.
         ENDIF.
+IF ls_range-name = 'PARTTIME_OR_FULLTIME'.
+
+DELETE it_output_list where parttime_or_fulltime NOT IN ls_range-range.
+ENDIF.
     ENDLOOP.
     DATA(filter) = io_request->get_filter( ).
  DATA(filter_tree) = filter->get_as_tree( ).
