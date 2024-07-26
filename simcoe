@@ -1,0 +1,142 @@
+CLASS zhr_query_position_list DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+  INTERFACES if_rap_query_provider.
+
+  TYPES: BEGIN OF t_output_list,
+         department type stext,
+         position_text type stext,
+         positon_id type objektid,
+         employee_name type stext,
+         employee_id type objektid,
+         status type stext,
+         parttime_or_fulltime type stext,
+         END OF T_OUTPUT_LIST.
+  DATA: it_output_list TYPE STANDARD TABLE OF t_output_list,
+        ls_output_list TYPE t_output_list.
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+
+ENDCLASS.
+
+
+
+CLASS zhr_query_position_list IMPLEMENTATION.
+  METHOD if_rap_query_provider~select.
+     TRY.
+        CASE io_request->get_entity_id( ).
+
+          WHEN 'ZHR_POSITION_LIST' .
+            DATA: orginfo_tab TYPE STANDARD TABLE OF  hrcm_orginfo  .
+          CALL FUNCTION 'HRCM_ORGSTRC_INFO_TABLE_GET'
+       EXPORTING
+            plvar          = '01'
+            root_otype     = 'O'
+            root_objid     = 10000050
+            begda          = sy-datum
+            endda          = sy-datum
+           PATH_ID        = 'O-O-P'
+           PATH_DEPTH     = 0
+       TABLES
+            org_info_table = orginfo_tab
+       EXCEPTIONS
+            path_error     = 1
+            root_error     = 2
+            OTHERS         = 3.
+  IF sy-subrc <> 0.
+
+  ENDIF.
+
+  DATA(lt_temp_orgtab) = orginfo_tab.
+  LOOP AT orginfo_tab INTO DATA(ls_orginfo) WHERE ( otype = 'O' or otype = 'S').
+
+  if ls_orginfo-otype = 'O' AND  ( ls_orginfo-parot = 'O' or ls_orginfo-parot IS INITIAL ).
+  ls_output_list-department = ls_orginfo-stext.
+  CONTINUE.
+  endif.
+  ls_output_list-position_text = ls_orginfo-stext.
+  ls_output_list-positon_id = ls_orginfo-objid.
+  LOOP AT lt_temp_orgtab INTO DATA(ls_temp_orgtab) WHERE parid = ls_orginfo-objid.
+  ls_output_list-employee_name = ls_temp_orgtab-stext.
+  ls_output_list-employee_id = ls_temp_orgtab-objid.
+  ls_output_list-status = 'Filled'.
+  APPEND ls_output_list TO it_output_list.
+  ENDLOOP.
+  IF sy-subrc <> 0.
+  CLEAR:ls_output_list-employee_name,
+  ls_output_list-employee_id.
+  ls_output_list-status = 'Vacant'.
+  APPEND ls_output_list TO it_output_list.
+  ENDIF.
+
+*  CLEAR ls_output_list.
+  CLEAR ls_orginfo.
+  ENDLOOP.
+
+ DATA(lv_sql_filter) = io_request->get_filter( )->get_as_sql_string( ).
+      TRY.
+        DATA(lt_ranges) = io_request->get_filter( )->get_as_ranges( ).
+****filter manipulation
+    CATCH cx_rap_query_filter_no_range.
+    ""error handling
+    ENDTRY.
+    LOOP AT lt_ranges INTO DATA(ls_range).
+        IF ls_range-name = 'STATUS'.
+        DELETE it_output_list WHERE status NOT IN ls_range-range.
+        ENDIF.
+    ENDLOOP.
+    DATA(filter) = io_request->get_filter( ).
+ DATA(filter_tree) = filter->get_as_tree( ).
+ IF filter_tree IS NOT INITIAL.
+  "parse the filter tree using the methods get_root_node, get_children, get_type and get_value
+...
+ ENDIF.
+ DATA(lv_search_string) = io_request->get_search_expression( ).
+    DATA(lv_search_sql) = |DESCRIPTION LIKE '%{ cl_abap_dyn_prg=>escape_quotes( lv_search_string ) }%'|.
+
+    IF lv_sql_filter IS INITIAL.
+      lv_sql_filter = lv_search_sql.
+    ELSE.
+      lv_sql_filter = |( { lv_sql_filter } AND { lv_search_sql } )|.
+    ENDIF.
+              DATA(lv_offset) = io_request->get_paging( )->get_offset( ).
+              DATA(lv_page_size) = io_request->get_paging( )->get_page_size( ).
+
+              DATA(lv_max_rows) = COND #( WHEN lv_page_size = if_rap_query_paging=>page_size_unlimited
+                                          THEN 0 ELSE lv_page_size ).
+*SELECT *
+*  FROM zhr_position_tbl
+*  ORDER BY PRIMARY KEY
+*  INTO TABLE @orginfo_tab
+*  OFFSET @lv_offset UP TO @lv_max_rows ROWS.
+data : lv_lines TYPE INT8,
+      lv_delete_from TYPE INT8,
+      lv_db_count type int8.
+           lv_db_count = LINES( it_output_list ).
+
+*  zrm_upload_data=>load_data( IMPORTING et_data = orginfo_tab ).
+  IF lv_offset > 0.
+    DELETE it_output_list FROM 1 TO lv_offset.
+    lv_delete_from = lv_max_rows + 1.
+    lv_lines = LINES( orginfo_tab ).
+    DELETE it_output_list FROM lv_delete_from TO lv_lines.
+  ELSE .
+     lv_max_rows = lv_max_rows + 1.
+     DELETE it_output_list FROM lv_max_rows.
+
+  ENDIF.
+  io_response->set_data( it_output_list ).
+*  IF io_request->is_total_numb_of_rec_requested( ).
+          io_response->set_total_number_of_records( lv_db_count ).
+*            ENDIF.
+          WHEN OTHERS.
+
+        ENDCASE.
+        CATCH cx_rap_query_provider.
+     ENDTRY.
+  ENDMETHOD.
+
+ENDCLASS.
