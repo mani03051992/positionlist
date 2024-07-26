@@ -1,0 +1,36 @@
+CLASS zhr_query_postion__ptft_vh DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+
+    INTERFACES if_rap_query_provider .
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+ENDCLASS.
+
+
+
+CLASS zhr_query_postion__ptft_vh IMPLEMENTATION.
+
+
+  METHOD if_rap_query_provider~select.
+    DATA lt_values TYPE STANDARD TABLE OF ZHR_CUS_PT_FT_VH WITH EMPTY KEY.
+
+lt_values = VALUE #( (  parttime_or_fulltime = 'Part Time')
+                     (  parttime_or_fulltime = 'Full Time') ).
+
+io_request->get_sort_elements( ).
+io_request->get_paging( ).
+
+IF io_request->is_data_requested( ).
+  io_response->set_data( lt_values ).
+ENDIF.
+
+IF io_request->is_total_numb_of_rec_requested( ).
+  io_response->set_total_number_of_records( lines( lt_values ) ).
+ENDIF.
+
+  ENDMETHOD.
+ENDCLASS.
