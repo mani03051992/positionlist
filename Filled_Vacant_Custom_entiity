@@ -1,0 +1,9 @@
+@EndUserText.label: 'Custom entity for active position list'
+@ObjectModel.query.implementedBy:'ABAP:ZHR_QUERY_POSTION_VH' 
+define custom entity ZHR_CUS_STATUS_VH 
+{
+@EndUserText.label: 'Filled/Vacant'
+@UI: { lineItem: [  { position:10 } ] }
+key         status : stext;
+ 
+}
