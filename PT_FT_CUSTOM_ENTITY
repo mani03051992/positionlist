@@ -1,0 +1,10 @@
+
+@EndUserText.label: 'Custom entity for active position list'
+@ObjectModel.query.implementedBy:'ABAP:ZHR_QUERY_POSTION__PTFT_VH' 
+define custom entity ZHR_CUS_PT_FT_VH 
+{
+@EndUserText.label: 'Part Time/Full Time'
+@UI: { lineItem: [  { position:10 } ] }
+key         parttime_or_fulltime : stext;
+ 
+}
